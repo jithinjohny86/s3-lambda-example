@@ -1,0 +1,37 @@
+version: 0.2
+
+env:
+  variables:
+    ARTIFACT_BUCKET: lambda-artifacts-5f8d1cd478d53c24
+    JAVA_VERSION: corretto8
+    TEMPLATE_OUT_FILE_NAME: deploy.yml
+
+phases:
+  install:
+    runtime-versions:
+      java: ${JAVA_VERSION}
+  pre_build:
+    commands:
+      - echo Test started on `date`
+      - mvn clean
+  build:
+    commands:
+      - mvn package -Dmaven.test.skip=true
+      - export BUCKET=my-bucket-for-test
+      - aws cloudformation package
+        --template-file template-mvn.yml
+        --s3-bucket $ARTIFACT_BUCKET
+        --output-template-file ${TEMPLATE_OUT_FILE_NAME}
+      - aws cloudformation deploy
+        --template-file ${TEMPLATE_OUT_FILE_NAME}
+        --stack-name s3-java
+        --capabilities CAPABILITY_NAMED_IAM
+  post_build:
+    commands:
+      - echo Build completed on `date` !!!
+
+artifacts:
+  files:
+    - target/s3-java-1.0-SNAPSHOT.jar
+    - template-mvn.yml
+    - out.yml
